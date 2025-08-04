@@ -6,7 +6,6 @@ import Footer from '../components/layout/Footer.jsx';
 import StreakTracker from '../components/dashboard/StreakTracker.jsx';
 import DailyQuote from '../components/dashboard/DailyQuote.jsx';
 import QuickStats from '../components/dashboard/QuickStats.jsx'; // 1. Import the new component
-import BreathingWidget from '../components/dashboard/BreathingWidget.jsx';
 import ActiveHabitPack from '../components/dashboard/ActiveHabitPack.jsx';
 import { Layers, BookText, LineChart, MessageSquare } from 'lucide-react';
 
@@ -21,7 +20,6 @@ const DashboardPage = () => {
   };
 
   const features = [
-    { name: 'Daily Task', link: '/daily-task', icon: <Layers /> },
     { name: 'My Journal', link: '/journal', icon: <BookText /> },
     { name: 'Mood Timeline', link: '/timeline', icon: <LineChart /> },
     { name: 'Talk to CalmBot', link: '/chat', icon: <MessageSquare /> },
@@ -52,9 +50,6 @@ const DashboardPage = () => {
 
           {/* --- NEW: Quick Glance Metrics --- */}
           <QuickStats />
-          
-          {/* Breathing Widget */}
-          <BreathingWidget />
           
           {/* Active Habit Pack */}
           <ActiveHabitPack />

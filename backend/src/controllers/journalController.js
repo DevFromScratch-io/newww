@@ -1,5 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import JournalEntry from '../models/journalEntryModel.js';
+import Badge from '../models/badgeModel.js';
+import UserBadge from '../models/UserBadgeModel.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 let genAI;
@@ -37,6 +39,41 @@ const createJournalEntry = asyncHandler(async (req, res) => {
     content,
     aiReflection,
   });
+
+  // Check if user has already journaled today for achievement
+  const today = new Date();
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  
+  const existingJournalBadge = await UserBadge.findOne({
+    user: req.user._id,
+    createdAt: { $gte: startOfDay, $lt: endOfDay }
+  }).populate('badge');
+
+  // Only award journal badge if they haven't already got one today
+  if (!existingJournalBadge || !existingJournalBadge.badge || existingJournalBadge.badge.criteria !== 'daily-journal') {
+    try {
+      // Find or create journal badge
+      let journalBadge = await Badge.findOne({ criteria: 'daily-journal' });
+      if (!journalBadge) {
+        journalBadge = await Badge.create({
+          name: 'Daily Journaler',
+          description: 'Completed daily journal entry',
+          icon: 'BookOpen',
+          criteria: 'daily-journal'
+        });
+      }
+
+      // Award badge to user
+      await UserBadge.create({
+        user: req.user._id,
+        badge: journalBadge._id
+      });
+    } catch (badgeErr) {
+      console.error('Failed to award journal badge:', badgeErr);
+    }
+  }
+
   res.status(201).json(entry);
 });
 

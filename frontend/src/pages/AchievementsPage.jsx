@@ -13,7 +13,10 @@ const AchievementsPage = () => {
     const fetchBadges = async () => {
       try {
         const { data } = await API.get('/achievements');
-        const validBadges = data.filter(userBadge => userBadge?.badge);
+        // Filter for valid badges - either populated or direct badge objects
+        const validBadges = data.filter(userBadge => 
+          userBadge?.badge || (userBadge?.name && userBadge?.description)
+        );
         setEarnedBadges(validBadges);
       } catch (err) {
         console.error('Failed to fetch badges', err);
@@ -49,19 +52,24 @@ const AchievementsPage = () => {
           {!isLoading && !error && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {earnedBadges.length > 0 ? (
-                earnedBadges.map(({ badge }, index) => {
-                  const icon = badge?.iconName || 'Award';
+                earnedBadges.map((userBadge, index) => {
+                  const badge = userBadge.badge || userBadge; // Handle both populated and direct badge objects
+                  const icon = badge?.icon || badge?.iconName || 'Award';
                   const name = badge?.name || 'Unknown Badge';
                   const description = badge?.description || 'No description available';
+                  const earnedDate = userBadge.createdAt ? new Date(userBadge.createdAt).toLocaleDateString() : '';
 
                   return (
                     <div
-                      key={badge?._id || `fallback-${index}`}
+                      key={badge?._id || userBadge?._id || `fallback-${index}`}
                       className="bg-white p-6 rounded-lg shadow-md border border-border-gray text-center flex flex-col items-center"
                     >
                       <div className="mb-4">{renderIcon(icon)}</div>
                       <h3 className="text-xl font-bold text-primary-text">{name}</h3>
                       <p className="text-primary-text text-opacity-70 mt-1">{description}</p>
+                      {earnedDate && (
+                        <p className="text-xs text-gray-500 mt-2">Earned: {earnedDate}</p>
+                      )}
                     </div>
                   );
                 })

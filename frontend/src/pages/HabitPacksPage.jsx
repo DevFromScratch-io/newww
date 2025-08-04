@@ -15,12 +15,18 @@ const HabitPacksPage = () => {
   useEffect(() => {
     const fetchPageData = async () => {
       try {
-        const [packsRes, activePackRes] = await Promise.all([
-          API.get('/habit-packs'),
-          API.get('/habit-packs/active')
-        ]);
+        // Fetch packs (required)
+        const packsRes = await API.get('/habit-packs');
         setPacks(packsRes.data);
-        setActivePack(activePackRes.data);
+
+        // Try to fetch active pack (optional)
+        try {
+          const activePackRes = await API.get('/habit-packs/active');
+          setActivePack(activePackRes.data);
+        } catch (activePackErr) {
+          // No active pack is fine, just set to null
+          setActivePack(null);
+        }
       } catch (err) {
         setError('Could not load habit packs.');
       } finally {

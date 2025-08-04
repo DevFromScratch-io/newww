@@ -145,17 +145,41 @@ const MoodTimelinePage = () => {
 
           {/* The Chart */}
           <div className="bg-white p-4 rounded-lg shadow-md border border-border-gray" style={{ height: '400px' }}>
-            {isLoading ? <p>Loading chart...</p> : filteredData.length > 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <p>Loading chart...</p>
+              </div>
+            ) : filteredData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={filteredData.map(d => ({ ...d, date: d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }))}>
+                <LineChart data={filteredData.map(d => ({ 
+                  ...d, 
+                  dateFormatted: d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                  color: moodConfig[d.mood]?.color || '#8884d8'
+                }))}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis domain={[0, 6]} hide />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="moodValue" name="Mood" stroke="#8884d8" strokeWidth={2} dot={<CustomDot />} />
+                  <XAxis dataKey="dateFormatted" />
+                  <YAxis 
+                    domain={[0, 6]} 
+                    tickCount={6}
+                    tickFormatter={(value) => valueToMood(value) || ''}
+                  />
+                  <Tooltip content={(props) => <CustomTooltip {...props} />} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="moodValue" 
+                    name="Mood" 
+                    stroke="#3B82F6" 
+                    strokeWidth={3}
+                    dot={(props) => <CustomDot {...props} />}
+                    activeDot={{ r: 8, stroke: '#3B82F6', strokeWidth: 2 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
-            ) : <p className="text-center pt-16">No mood data to display for this period.</p>}
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-gray-500">No mood data to display for this period.</p>
+              </div>
+            )}
           </div>
         </div>
       </main>
