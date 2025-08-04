@@ -1,22 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { CheckCircle, Lock, Package, Trophy } from 'lucide-react';
 import API from '../../api';
+import PerspectiveShift from '../tasks/PerspectiveShift.jsx';
+import MemoryGame from '../tasks/MemoryGame.jsx';
+import BrainTeaser from '../tasks/BrainTeaser.jsx';
+import GratitudeEntry from '../tasks/GratitudeEntry.jsx';
+
+const DAILY_TASKS = [
+  { id: 1, name: 'Perspective Shift', component: PerspectiveShift, icon: '🧠' },
+  { id: 2, name: 'Memory Challenge', component: MemoryGame, icon: '🎯' },
+  { id: 3, name: 'Brain Teaser', component: BrainTeaser, icon: '🧩' },
+  { id: 4, name: 'Gratitude Entry', component: GratitudeEntry, icon: '💝' },
+  { id: 5, name: 'Reflection', component: PerspectiveShift, icon: '🌟' }, // Using PerspectiveShift as 5th task
+];
 
 const ActiveHabitPack = () => {
   const [activePack, setActivePack] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [response, setResponse] = useState('');
-  const [submitLoading, setSubmitLoading] = useState(false);
   const [error, setError] = useState('');
+  const [completedTasks, setCompletedTasks] = useState([]);
+  const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchActivePack = async () => {
     setIsLoading(true);
     try {
       const { data } = await API.get('/habit-packs/active');
       setActivePack(data);
+      
+      if (data) {
+        // Get today's completed tasks
+        const today = new Date().toISOString().split('T')[0];
+        const todayProgress = data.progress?.find(p => p.date === today);
+        setCompletedTasks(todayProgress?.completedTasks || []);
+        setCurrentTaskIndex(todayProgress?.completedTasks?.length || 0);
+      }
     } catch (err) {
       console.error("Failed to fetch active pack", err);
-      setError("Could not load your current task.");
+      if (err.response?.status === 404) {
+        setActivePack(null); // No active pack
+      } else {
+        setError("Could not load your current habit pack.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -26,83 +52,197 @@ const ActiveHabitPack = () => {
     fetchActivePack();
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (response.trim() === '') {
-      setError('Please write a response.');
-      return;
-    }
-    setSubmitLoading(true);
-    setError('');
+  const handleTaskComplete = async (taskData) => {
+    setIsSubmitting(true);
     try {
-      await API.post('/habit-packs/submit', { response });
-      await API.post('/badges/check');
+      // Mark task as complete
+      await API.post('/habit-packs/progress', {
+        taskIndex: currentTaskIndex,
+        taskData
+      });
+
+      // Update local state
+      const newCompletedTasks = [...completedTasks, currentTaskIndex];
+      setCompletedTasks(newCompletedTasks);
+      setCurrentTaskIndex(newCompletedTasks.length);
+
+      // Check if all tasks completed
+      if (newCompletedTasks.length === DAILY_TASKS.length) {
+        try {
+          await API.post('/achievements/unlock', { 
+            type: 'daily-complete' 
+          });
+        } catch (achievementErr) {
+          console.error('Failed to unlock achievement:', achievementErr);
+        }
+      }
+
+      // Refresh pack data
       await fetchActivePack();
-      setResponse('');
     } catch (err) {
-      setError('Failed to submit your entry. Please try again.');
+      console.error('Failed to complete task:', err);
+      setError('Failed to save your progress. Please try again.');
     } finally {
-      setSubmitLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   if (isLoading) {
-    return <div className="text-center p-6 bg-white rounded-lg shadow-md mt-8">Loading your daily task...</div>;
-  }
-
-  const habitPack = activePack?.habitPack;
-  const currentDay = activePack?.currentDay;
-  const taskForToday = habitPack?.tasks?.find(task => task.day === currentDay);
-  const hasCompletedToday = activePack?.entries?.some(entry => entry.day === currentDay);
-
-  if (habitPack && taskForToday) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-md border border-border-gray mt-8">
-        <h3 className="text-xl font-bold text-primary-text">Active Pack: {habitPack.title}</h3>
-        <p className="text-primary-text text-opacity-70">Day {currentDay} of {habitPack.duration}</p>
-
-        {hasCompletedToday ? (
-          <div className="mt-4 text-center p-6 bg-accent-green bg-opacity-10 rounded-md">
-            <p className="font-semibold text-accent-green">
-              Great job! You've completed your task for today. Come back tomorrow for the next one.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="mt-4">
-            <p className="text-primary-text italic mb-4">
-              "{taskForToday?.prompt || 'Loading prompt...'}"
-            </p>
-            <textarea
-              value={response}
-              onChange={(e) => setResponse(e.target.value)}
-              className="w-full h-32 p-3 bg-gray-100 border border-border-gray rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-              placeholder="Write your reflection here..."
-            />
-            {error && <p className="mt-2 text-red-500 text-sm">{error}</p>}
-            <button
-              type="submit"
-              disabled={submitLoading}
-              className="w-full mt-4 py-3 px-4 bg-cta-orange text-white font-bold rounded-md hover:bg-opacity-90 disabled:opacity-50"
-            >
-              {submitLoading ? 'Saving...' : `Complete Day ${currentDay}`}
-            </button>
-          </form>
-        )}
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mt-8">
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="bg-white p-6 rounded-lg shadow-md border border-border-gray mt-8 text-center">
-      <h3 className="text-xl font-bold text-primary-text">No Active Habit Pack</h3>
-      <p className="mt-2 text-primary-text text-opacity-70">
-        You haven't started a habit pack yet. Why not start one today?
-      </p>
-      <Link to="/habit-packs">
-        <button className="mt-4 bg-primary-blue text-white font-bold py-2 px-6 rounded-md hover:bg-opacity-90">
-          Browse Packs
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-8">
+        <p className="text-red-700">{error}</p>
+        <button
+          onClick={fetchActivePack}
+          className="mt-2 text-red-600 hover:text-red-800 underline"
+        >
+          Try again
         </button>
-      </Link>
+      </div>
+    );
+  }
+
+  if (!activePack) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-8 text-center">
+        <Package className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+        <h3 className="text-xl font-bold text-gray-800 mb-2">No Active Habit Pack</h3>
+        <p className="text-gray-600 mb-4">
+          You haven't started a habit pack yet. Why not start one today?
+        </p>
+        <Link to="/habit-packs">
+          <button className="bg-blue-600 text-white font-bold py-2 px-6 rounded-md hover:bg-blue-700 transition-colors">
+            Browse Packs
+          </button>
+        </Link>
+      </div>
+    );
+  }
+
+  const allTasksCompleted = completedTasks.length === DAILY_TASKS.length;
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-8">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="text-xl font-bold text-gray-800">Daily Tasks</h3>
+          <p className="text-gray-600">
+            {activePack.name} • Day {activePack.currentDay}
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="text-right">
+            <div className="text-2xl font-bold text-blue-600">
+              {completedTasks.length}/{DAILY_TASKS.length}
+            </div>
+            <div className="text-xs text-gray-500">completed</div>
+          </div>
+          {allTasksCompleted && (
+            <Trophy className="w-8 h-8 text-yellow-500" />
+          )}
+        </div>
+      </div>
+
+      {allTasksCompleted && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center space-x-2">
+            <Trophy className="w-5 h-5 text-green-600" />
+            <span className="text-green-800 font-medium">Amazing work!</span>
+          </div>
+          <p className="text-green-700 text-sm mt-1">
+            You've completed all your daily tasks! Come back tomorrow for new challenges.
+          </p>
+        </div>
+      )}
+
+      {/* Task Progress Bar */}
+      <div className="mb-6">
+        <div className="flex justify-between mb-2">
+          {DAILY_TASKS.map((task, index) => {
+            const isCompleted = completedTasks.includes(index);
+            const isCurrent = index === currentTaskIndex && !allTasksCompleted;
+            const isLocked = index > currentTaskIndex;
+
+            return (
+              <div key={task.id} className="flex flex-col items-center">
+                <div
+                  className={`
+                    w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold mb-1 transition-all
+                    ${isCompleted 
+                      ? 'bg-green-500 text-white' 
+                      : isCurrent 
+                        ? 'bg-blue-500 text-white animate-pulse' 
+                        : isLocked
+                          ? 'bg-gray-200 text-gray-400'
+                          : 'bg-gray-100 text-gray-600'
+                    }
+                  `}
+                >
+                  {isCompleted ? (
+                    <CheckCircle className="w-5 h-5" />
+                  ) : isLocked ? (
+                    <Lock className="w-4 h-4" />
+                  ) : (
+                    task.icon
+                  )}
+                </div>
+                <span className={`text-xs text-center ${isCompleted ? 'text-green-600' : 'text-gray-500'}`}>
+                  {task.name}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${(completedTasks.length / DAILY_TASKS.length) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Current Task */}
+      {!allTasksCompleted && currentTaskIndex < DAILY_TASKS.length && (
+        <div className="border-t border-gray-200 pt-6">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4">
+            Current Task: {DAILY_TASKS[currentTaskIndex].name}
+          </h4>
+          
+          {React.createElement(DAILY_TASKS[currentTaskIndex].component, {
+            onComplete: handleTaskComplete,
+            isCompleted: false,
+            disabled: isSubmitting
+          })}
+        </div>
+      )}
+
+      {/* Completed Tasks Summary */}
+      {completedTasks.length > 0 && (
+        <div className="border-t border-gray-200 pt-4 mt-6">
+          <h4 className="text-md font-medium text-gray-700 mb-2">Completed Today:</h4>
+          <div className="flex flex-wrap gap-2">
+            {completedTasks.map((taskIndex) => (
+              <span
+                key={taskIndex}
+                className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800"
+              >
+                <CheckCircle className="w-3 h-3 mr-1" />
+                {DAILY_TASKS[taskIndex].name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

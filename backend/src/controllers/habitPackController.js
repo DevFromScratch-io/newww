@@ -131,4 +131,90 @@ const submitTaskResponse = asyncHandler(async (req, res) => {
 });
 
 
-export { getAllPacks, startPack, getDailyTasks, submitTaskResponse };
+// @desc    Get user's active habit pack
+// @route   GET /api/habit-packs/active  
+// @access  Private
+const getActivePack = asyncHandler(async (req, res) => {
+  const activePack = await UserHabitPack.findOne({ 
+    user: req.user._id, 
+    status: 'in-progress' 
+  }).populate('habitPack');
+
+  if (!activePack) {
+    return res.status(404).json({ message: 'No active habit pack found' });
+  }
+
+  // Get today's progress
+  const today = new Date().toISOString().split('T')[0];
+  const todayProgress = activePack.dailyProgress.find(p => 
+    new Date(p.createdAt).toISOString().split('T')[0] === today
+  );
+
+  const response = {
+    _id: activePack._id,
+    name: activePack.habitPack.name,
+    currentDay: activePack.currentDay,
+    progress: activePack.dailyProgress.map(p => ({
+      date: new Date(p.createdAt).toISOString().split('T')[0],
+      completedTasks: p.entries ? p.entries.map((_, index) => index) : []
+    }))
+  };
+
+  res.json(response);
+});
+
+// @desc    Mark task progress
+// @route   POST /api/habit-packs/progress
+// @access  Private
+const markTaskProgress = asyncHandler(async (req, res) => {
+  const { taskIndex, taskData } = req.body;
+  const userId = req.user._id;
+
+  const activePack = await UserHabitPack.findOne({ 
+    user: userId, 
+    status: 'in-progress' 
+  }).populate('habitPack');
+
+  if (!activePack) {
+    res.status(404);
+    throw new Error('No active habit pack found.');
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  let todayProgress = activePack.dailyProgress.find(p => 
+    new Date(p.createdAt).toISOString().split('T')[0] === today
+  );
+
+  // If no progress for today, create it
+  if (!todayProgress) {
+    todayProgress = {
+      day: activePack.currentDay,
+      createdAt: new Date(),
+      entries: []
+    };
+    activePack.dailyProgress.push(todayProgress);
+  }
+
+  // Add task completion entry
+  todayProgress.entries.push({
+    taskIndex,
+    taskType: taskData.type,
+    response: taskData.data,
+    completedAt: new Date()
+  });
+
+  // Update current day if all tasks completed
+  if (todayProgress.entries.length === 5) { // 5 daily tasks
+    activePack.currentDay += 1;
+    
+    // Check if pack is completed
+    if (activePack.currentDay > activePack.habitPack.duration) {
+      activePack.status = 'completed';
+    }
+  }
+
+  await activePack.save();
+  res.json({ success: true, progress: todayProgress });
+});
+
+export { getAllPacks, startPack, getDailyTasks, submitTaskResponse, getActivePack, markTaskProgress };

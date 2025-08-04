@@ -4,6 +4,8 @@ import {
   startPack,
   getDailyTasks,
   submitTaskResponse,
+  getActivePack,
+  markTaskProgress,
 } from '../controllers/habitPackController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -12,8 +14,14 @@ const router = express.Router();
 // Route to get all available pack templates
 router.route('/').get(protect, getAllPacks);
 
+// Route to get the user's active habit pack
+router.route('/active').get(protect, getActivePack);
+
 // Route to get the user's current daily tasks
 router.route('/daily-task').get(protect, getDailyTasks);
+
+// Route to mark task progress
+router.route('/progress').post(protect, markTaskProgress);
 
 // Route to submit a response for a specific task
 router.route('/submit-task').post(protect, submitTaskResponse);
