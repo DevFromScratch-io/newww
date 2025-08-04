@@ -1,5 +1,20 @@
 {
+  "name": "mindloom",
+  "version": "1.0.0",
+  "description": "Your Daily Mental Fitness Companion - A full-stack MERN application for emotional resilience",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm start",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install"
+  },
   "dependencies": {
     "lucide-react": "^0.534.0"
-  }
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["mental-health", "wellness", "habits", "mood-tracking", "ai-coach"],
+  "author": "",
+  "license": "MIT"
 }

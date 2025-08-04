@@ -7,11 +7,13 @@ import mongoose from 'mongoose';
 
 // Import all routes
 import userRoutes from './src/routes/userRoutes.js';
+import authRoutes from './src/routes/authRoutes.js';
 import moodRoutes from './src/routes/moodRoutes.js';
 import journalRoutes from './src/routes/journalRoutes.js';
 import streakRoutes from './src/routes/streakRoutes.js';
 import calmBotRoutes from './src/routes/calmBotRoutes.js';
 import habitPackRoutes from './src/routes/habitPackRoutes.js';
+import routineRoutes from './src/routes/routineRoutes.js';
 import badgeRoutes from './src/routes/badgeRoutes.js';
 import dashboardRoutes from './src/routes/dashboardRoutes.js';
 import breathingRoutes from './src/routes/breathingRoutes.js';
@@ -41,11 +43,13 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/moods', moodRoutes);
 app.use('/api/journal', journalRoutes);
 app.use('/api/streaks', streakRoutes);
 app.use('/api/calmbot', calmBotRoutes);
 app.use('/api/habit-packs', habitPackRoutes); // This line should be present
+app.use('/api/routines', routineRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/breathing', breathingRoutes);
