@@ -94,4 +94,49 @@ const checkAndAwardBadges = asyncHandler(async (req, res) => {
   res.json(updatedUserBadges);
 });
 
-export { getMyBadges, checkAndAwardBadges };
+// @desc    Unlock achievement when all daily tasks completed
+// @route   POST /api/achievements/unlock
+// @access  Private
+const unlockAchievement = asyncHandler(async (req, res) => {
+  const { type } = req.body;
+  const userId = req.user._id;
+
+  if (type === 'daily-complete') {
+    // Check if user already has daily completion badge for today
+    const today = new Date();
+    const existingBadge = await UserBadge.findOne({
+      user: userId,
+      createdAt: {
+        $gte: new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+        $lt: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+      }
+    });
+
+    if (!existingBadge) {
+      // Find or create daily completion badge
+      let dailyBadge = await Badge.findOne({ name: 'Daily Warrior' });
+      if (!dailyBadge) {
+        dailyBadge = await Badge.create({
+          name: 'Daily Warrior',
+          description: 'Completed all daily tasks',
+          icon: 'Trophy',
+          criteria: 'daily-complete'
+        });
+      }
+
+      // Award badge to user
+      await UserBadge.create({
+        user: userId,
+        badge: dailyBadge._id
+      });
+
+      res.json({ message: 'Achievement unlocked!', badge: dailyBadge });
+    } else {
+      res.json({ message: 'Already earned today' });
+    }
+  } else {
+    res.status(400).json({ message: 'Invalid achievement type' });
+  }
+});
+
+export { getMyBadges, checkAndAwardBadges, unlockAchievement };

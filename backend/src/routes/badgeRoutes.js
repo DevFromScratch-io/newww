@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMyBadges, checkAndAwardBadges } from '../controllers/badgeController.js';
+import { getMyBadges, checkAndAwardBadges, unlockAchievement } from '../controllers/badgeController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();

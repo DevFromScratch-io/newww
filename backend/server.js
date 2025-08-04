@@ -15,6 +15,7 @@ import calmBotRoutes from './src/routes/calmBotRoutes.js';
 import habitPackRoutes from './src/routes/habitPackRoutes.js';
 import routineRoutes from './src/routes/routineRoutes.js';
 import badgeRoutes from './src/routes/badgeRoutes.js';
+import achievementRoutes from './src/routes/achievementRoutes.js';
 import dashboardRoutes from './src/routes/dashboardRoutes.js';
 import breathingRoutes from './src/routes/breathingRoutes.js';
 
@@ -51,6 +52,7 @@ app.use('/api/calmbot', calmBotRoutes);
 app.use('/api/habit-packs', habitPackRoutes); // This line should be present
 app.use('/api/routines', routineRoutes);
 app.use('/api/badges', badgeRoutes);
+app.use('/api/achievements', achievementRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/breathing', breathingRoutes);
 

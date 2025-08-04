@@ -12,7 +12,7 @@ const AchievementsPage = () => {
   useEffect(() => {
     const fetchBadges = async () => {
       try {
-        const { data } = await API.get('/badges');
+        const { data } = await API.get('/achievements');
         const validBadges = data.filter(userBadge => userBadge?.badge);
         setEarnedBadges(validBadges);
       } catch (err) {
