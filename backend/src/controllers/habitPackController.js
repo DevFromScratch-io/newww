@@ -144,20 +144,22 @@ const getActivePack = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'No active habit pack found' });
   }
 
-  // Get today's progress
-  const today = new Date().toISOString().split('T')[0];
-  const todayProgress = activePack.dailyProgress.find(p => 
-    new Date(p.createdAt).toISOString().split('T')[0] === today
-  );
+  // Create progress array mapping each day to completed tasks
+  const progress = activePack.dailyProgress.map(dayProgress => {
+    const date = new Date(dayProgress.createdAt).toISOString().split('T')[0];
+    const completedTasks = dayProgress.entries ? dayProgress.entries.map((_, index) => index) : [];
+    
+    return {
+      date,
+      completedTasks
+    };
+  });
 
   const response = {
     _id: activePack._id,
-    name: activePack.habitPack.name,
+    name: activePack.habitPack.title, // Use 'title' from the habitPack model
     currentDay: activePack.currentDay,
-    progress: activePack.dailyProgress.map(p => ({
-      date: new Date(p.createdAt).toISOString().split('T')[0],
-      completedTasks: p.entries ? p.entries.map((_, index) => index) : []
-    }))
+    progress: progress
   };
 
   res.json(response);
@@ -190,7 +192,8 @@ const markTaskProgress = asyncHandler(async (req, res) => {
     todayProgress = {
       day: activePack.currentDay,
       createdAt: new Date(),
-      entries: []
+      entries: [],
+      tasks: [] // Will be populated when tasks are generated
     };
     activePack.dailyProgress.push(todayProgress);
   }
@@ -199,17 +202,21 @@ const markTaskProgress = asyncHandler(async (req, res) => {
   todayProgress.entries.push({
     taskIndex,
     taskType: taskData.type,
-    response: taskData.data,
+    response: taskData.data.response,
+    taskId: taskData.data.taskId,
     completedAt: new Date()
   });
 
-  // Update current day if all tasks completed
-  if (todayProgress.entries.length === 5) { // 5 daily tasks
+  // Check if all tasks completed for today
+  const totalTasksForToday = activePack.habitPack.tasksPerDay;
+  if (todayProgress.entries.length >= totalTasksForToday) {
+    todayProgress.isCompleted = true;
     activePack.currentDay += 1;
     
     // Check if pack is completed
     if (activePack.currentDay > activePack.habitPack.duration) {
       activePack.status = 'completed';
+      activePack.completedAt = new Date();
     }
   }
 

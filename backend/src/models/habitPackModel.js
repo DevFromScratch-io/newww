@@ -28,6 +28,11 @@ const habitPackSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  // Duration of the habit pack in days
+  duration: {
+    type: Number,
+    default: 21,
+  },
   // This is now a pool of all possible tasks for this pack
   taskPool: [taskSchema],
   // How many tasks to randomly select from the pool each day

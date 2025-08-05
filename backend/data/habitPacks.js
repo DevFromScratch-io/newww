@@ -3,6 +3,7 @@ export const packs = [
   {
     title: 'Daily Wellness Routine',
     description: 'A daily set of small tasks to build focus, awareness, and a positive mindset.',
+    duration: 21, // 21-day habit pack
     tasksPerDay: 4, // We will randomly select 4 tasks from the pool each day
     taskPool: [
       // Cognitive Reframing & Emotional Awareness

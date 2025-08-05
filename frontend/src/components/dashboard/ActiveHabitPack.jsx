@@ -2,21 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle, Lock, Package, Trophy } from 'lucide-react';
 import API from '../../api';
-import PerspectiveShift from '../tasks/PerspectiveShift.jsx';
-import MemoryGame from '../tasks/MemoryGame.jsx';
-import BrainTeaser from '../tasks/BrainTeaser.jsx';
-import GratitudeEntry from '../tasks/GratitudeEntry.jsx';
+import DynamicTask from '../tasks/DynamicTask.jsx';
 
-const DAILY_TASKS = [
-  { id: 1, name: 'Perspective Shift', component: PerspectiveShift, icon: '🧠' },
-  { id: 2, name: 'Memory Challenge', component: MemoryGame, icon: '🎯' },
-  { id: 3, name: 'Brain Teaser', component: BrainTeaser, icon: '🧩' },
-  { id: 4, name: 'Gratitude Entry', component: GratitudeEntry, icon: '💝' },
-  { id: 5, name: 'Reflection', component: PerspectiveShift, icon: '🌟' }, // Using PerspectiveShift as 5th task
-];
+// Helper functions for task naming and icons
+const getTaskName = (taskType) => {
+  switch (taskType) {
+    case 'textInput': return 'Reflection';
+    case 'multipleChoice': return 'Quiz';
+    case 'memorySequence': return 'Memory';
+    default: return 'Task';
+  }
+};
+
+const getTaskIcon = (taskType) => {
+  switch (taskType) {
+    case 'textInput': return '✍️';
+    case 'multipleChoice': return '🧩';
+    case 'memorySequence': return '🎯';
+    default: return '📝';
+  }
+};
 
 const ActiveHabitPack = () => {
   const [activePack, setActivePack] = useState(null);
+  const [dailyTasks, setDailyTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [completedTasks, setCompletedTasks] = useState([]);
@@ -29,12 +38,22 @@ const ActiveHabitPack = () => {
       const { data } = await API.get('/habit-packs/active');
       setActivePack(data);
       
-      if (data) {
+      if (data && data.progress) {
         // Get today's completed tasks
         const today = new Date().toISOString().split('T')[0];
-        const todayProgress = data.progress?.find(p => p.date === today);
+        const todayProgress = data.progress.find(p => p.date === today);
         setCompletedTasks(todayProgress?.completedTasks || []);
         setCurrentTaskIndex(todayProgress?.completedTasks?.length || 0);
+      } else {
+        // Reset state if no valid data
+        setCompletedTasks([]);
+        setCurrentTaskIndex(0);
+      }
+      
+      // Fetch today's tasks
+      const tasksResponse = await API.get('/habit-packs/daily-task');
+      if (tasksResponse.data && tasksResponse.data.tasks) {
+        setDailyTasks(tasksResponse.data.tasks);
       }
     } catch (err) {
       console.error("Failed to fetch active pack", err);
@@ -67,7 +86,7 @@ const ActiveHabitPack = () => {
       setCurrentTaskIndex(newCompletedTasks.length);
 
       // Check if all tasks completed
-      if (newCompletedTasks.length === DAILY_TASKS.length) {
+      if (newCompletedTasks.length === dailyTasks.length) {
         try {
           await API.post('/achievements/unlock', { 
             type: 'daily-complete' 
@@ -129,7 +148,7 @@ const ActiveHabitPack = () => {
     );
   }
 
-  const allTasksCompleted = completedTasks.length === DAILY_TASKS.length;
+  const allTasksCompleted = completedTasks.length === dailyTasks.length;
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-8">
@@ -137,13 +156,13 @@ const ActiveHabitPack = () => {
         <div>
           <h3 className="text-xl font-bold text-gray-800">Daily Tasks</h3>
           <p className="text-gray-600">
-            {activePack.name} • Day {activePack.currentDay}
+            {activePack?.name || 'Loading...'} • Day {activePack?.currentDay || 1}
           </p>
         </div>
         <div className="flex items-center space-x-2">
           <div className="text-right">
             <div className="text-2xl font-bold text-blue-600">
-              {completedTasks.length}/{DAILY_TASKS.length}
+              {completedTasks.length}/{dailyTasks.length}
             </div>
             <div className="text-xs text-gray-500">completed</div>
           </div>
@@ -168,13 +187,13 @@ const ActiveHabitPack = () => {
       {/* Task Progress Bar */}
       <div className="mb-6">
         <div className="flex justify-between mb-2">
-          {DAILY_TASKS.map((task, index) => {
+          {dailyTasks.map((task, index) => {
             const isCompleted = completedTasks.includes(index);
             const isCurrent = index === currentTaskIndex && !allTasksCompleted;
             const isLocked = index > currentTaskIndex;
 
             return (
-              <div key={task.id} className="flex flex-col items-center">
+              <div key={task.taskId || index} className="flex flex-col items-center">
                 <div
                   className={`
                     w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold mb-1 transition-all
@@ -193,11 +212,11 @@ const ActiveHabitPack = () => {
                   ) : isLocked ? (
                     <Lock className="w-4 h-4" />
                   ) : (
-                    task.icon
+                    getTaskIcon(task.taskType)
                   )}
                 </div>
                 <span className={`text-xs text-center ${isCompleted ? 'text-green-600' : 'text-gray-500'}`}>
-                  {task.name}
+                  {getTaskName(task.taskType)}
                 </span>
               </div>
             );
@@ -206,23 +225,24 @@ const ActiveHabitPack = () => {
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
             className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${(completedTasks.length / DAILY_TASKS.length) * 100}%` }}
+            style={{ width: `${(completedTasks.length / dailyTasks.length) * 100}%` }}
           />
         </div>
       </div>
 
       {/* Current Task */}
-      {!allTasksCompleted && currentTaskIndex < DAILY_TASKS.length && (
+      {!allTasksCompleted && currentTaskIndex < dailyTasks.length && (
         <div className="border-t border-gray-200 pt-6">
           <h4 className="text-lg font-semibold text-gray-800 mb-4">
-            Current Task: {DAILY_TASKS[currentTaskIndex].name}
+            Current Task: {getTaskName(dailyTasks[currentTaskIndex].taskType)}
           </h4>
           
-          {React.createElement(DAILY_TASKS[currentTaskIndex].component, {
-            onComplete: handleTaskComplete,
-            isCompleted: false,
-            disabled: isSubmitting
-          })}
+          <DynamicTask 
+            task={dailyTasks[currentTaskIndex]}
+            onComplete={handleTaskComplete}
+            isCompleted={false}
+            disabled={isSubmitting}
+          />
         </div>
       )}
 
@@ -237,7 +257,7 @@ const ActiveHabitPack = () => {
                 className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800"
               >
                 <CheckCircle className="w-3 h-3 mr-1" />
-                {DAILY_TASKS[taskIndex].name}
+                {getTaskName(dailyTasks[taskIndex]?.taskType)}
               </span>
             ))}
           </div>

@@ -2,10 +2,15 @@ import mongoose from 'mongoose';
 
 // This sub-schema stores the user's response for a single, completed task
 const taskEntrySchema = new mongoose.Schema({
+  // Index of the task in the daily tasks array
+  taskIndex: {
+    type: Number,
+    required: true,
+  },
   // We store a copy of the original task's ID for reference
   taskId: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true,
+    required: false, // Not always needed since we have taskIndex
   },
   taskType: {
     type: String,
@@ -57,6 +62,11 @@ const userHabitPackSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     required: true,
     ref: 'HabitPack',
+  },
+  // Current day in the habit pack
+  currentDay: {
+    type: Number,
+    default: 1,
   },
   // This is now an array that stores the tasks and progress for each day
   dailyProgress: [dailyTasksSchema],
